@@ -3,11 +3,18 @@
 
 from tardis_dev import datasets, get_exchange_details
 import logging
+import argparse
 
 # optionally enable debug logs
 # logging.basicConfig(level=logging.DEBUG)
+msg = "Called as SYMBOL FROMDATE TODATE"
+# Initialize parser
+parser = argparse.ArgumentParser(description = msg)
+parser.add_argument("--exchange")
+args = parser.parse_args()
 
-exchange = 'ftx'
+exchange = args.exchange if args.exchange else 'ftx'
+
 exchange_details = get_exchange_details(exchange)   
 for symbol in exchange_details["datasets"]["symbols"]:
 	symbol_id = symbol["id"]

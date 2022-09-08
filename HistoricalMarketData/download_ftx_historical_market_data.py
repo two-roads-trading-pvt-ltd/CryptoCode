@@ -3,11 +3,20 @@
 
 from tardis_dev import datasets, get_exchange_details
 import logging
+import argparse
 
 # optionally enable debug logs
 # logging.basicConfig(level=logging.DEBUG)
 
-exchange = 'ftx'
+msg = "Called as SYMBOL FROMDATE TODATE"
+# Initialize parser
+parser = argparse.ArgumentParser(description = msg)
+parser.add_argument("--exchange")
+parser.add_argument("--outputPath")
+args = parser.parse_args()
+
+exchange_ = args.exchange if args.exchange else 'ftx'
+output_path = args.outputPath if args.outputPath else '/NAS1/data/CryptoData/ftx'
 exchange_details = get_exchange_details(exchange)   
 
 f_hist = open("../Config/ftx_historical_market_data_api_key", "r")
@@ -33,7 +42,7 @@ for symbol in exchange_details["datasets"]["symbols"]:
     # each CSV dataset format is documented at https://docs.tardis.dev/downloadable-csv-files#data-types
     # see https://docs.tardis.dev/downloadable-csv-files#download-via-client-libraries for full options docs
     datasets.download(
-        exchange = exchange,
+        exchange = exchange_,
         data_types = data_types,
         from_date =  from_date,
         to_date = to_date,
@@ -41,5 +50,5 @@ for symbol in exchange_details["datasets"]["symbols"]:
         # TODO set your API key here
         api_key = historical_key,
         # path where CSV data will be downloaded into
-        download_dir = "/NAS1/data/CryptoData/",
+        download_dir = output_path,
     )
