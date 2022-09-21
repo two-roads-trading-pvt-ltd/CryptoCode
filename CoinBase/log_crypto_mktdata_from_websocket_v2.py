@@ -1,0 +1,320 @@
+import json
+import pprint
+import websocket
+import load_param
+import json
+from websocket import create_connection
+import ctypes
+import struct_types_coinbase
+from datetime import datetime
+from datetime import date
+import time
+import logging
+import sys
+import argparse
+#from websockets.extensions import permessage_deflate
+import rel
+from decimal import Decimal
+
+x_time = date.today()
+prev_date = int(x_time.strftime("%Y%m%d"))
+current_date = prev_date
+print("Starting Client For Date: ", prev_date)
+
+def decodeMessage(message):
+    global current_date
+    type_ = message.get('type')
+    debug_str = "Decode Message Type: " + type_
+    logging.debug(debug_str)
+    #return
+    date_time_str = message.get('time')
+    date_format = datetime.strptime(date_time_str,  "%Y-%m-%dT%H:%M:%S.%fZ")
+    # Get current time
+    x_time = datetime.now()
+    current_date = int(x_time.strftime("%Y%m%d"))
+#    print("Packet Received at =>" ,
+#      date_format.strftime('%Y-%m-%d %H:%M:%S.%f')," Current Time is: ", x_time.strftime("%Y-%m-%d %H:%M:%S.%f"))
+
+    coinbasemktdata.timeval_.tv_sec = int(time.mktime(date_format.timetuple()))
+    coinbasemktdata.timeval_.tv_usec = int(date_format.strftime("%f"))
+    coinbasemktdata.local_time_.tv_sec = int(time.mktime(x_time.timetuple()))
+    coinbasemktdata.local_time_.tv_usec = int(x_time.strftime("%f"))
+
+#    coinbasemktdata.timeval_.ToString()
+    coinbasemktdata.product_id = message.get('product_id').encode('UTF-8')# if message.get('product_id') is not None else None
+    coinbasemktdata.sequence = message.get('sequence')
+    if type_ == 'received':
+        #A valid order has been received and is now active.
+        coinbasemktdata.msg_type = 1
+        coinbasemktdata.data.coinbase_mkt_recieved_order.order_id = message.get('order_id').encode('UTF-8') #if message.get('order_id') is not None else None
+        coinbasemktdata.data.coinbase_mkt_recieved_order.client_oid = message.get('client_oid').encode('UTF-8') #if message.get('client_oid') is not None else None
+        coinbasemktdata.data.coinbase_mkt_recieved_order.size = float(message.get('size')) if message.get('size') is not None else 0
+        coinbasemktdata.data.coinbase_mkt_recieved_order.price = float(message.get('price')) if message.get('price') is not None else 0
+        #may have an optional funds field
+        coinbasemktdata.data.coinbase_mkt_recieved_order.funds = float(message.get('funds')) if message.get('funds') is not None else 0
+        if message.get('side').lower() == "buy":
+            coinbasemktdata.data.coinbase_mkt_recieved_order.buysell = 0
+        else:
+            coinbasemktdata.data.coinbase_mkt_recieved_order.buysell = 1
+        if message.get('order_type').lower() == "limit" :
+            coinbasemktdata.data.coinbase_mkt_recieved_order.order_type = b'L' # Limit order
+        else:
+            coinbasemktdata.data.coinbase_mkt_recieved_order.order_type = b'M' # Market Order
+    elif type_ == 'open':
+        #The order is now open on the order book.
+        coinbasemktdata.msg_type = 2
+        coinbasemktdata.data.coinbase_mkt_open_order.order_id = message.get('order_id').encode('UTF-8') #if message.get('order_id') is not None else None
+        coinbasemktdata.data.coinbase_mkt_open_order.price = float(message.get('price'))
+        coinbasemktdata.data.coinbase_mkt_open_order.remaining_size = float(message.get('remaining_size'))
+        if message.get('side').lower() == "buy":
+            coinbasemktdata.data.coinbase_mkt_open_order.buysell = 0 #BUY
+        else:
+            coinbasemktdata.data.coinbase_mkt_open_order.buysell = 1 #SELL
+    elif type_ == 'done':
+         #There are no more messages for an order_id after a done message.
+        ''' Cancel Order Reason only for authencicated users
+            101:Time In Force
+            102:Self Trade Prevention
+            103:Admin
+            104:Price Bound Order Protection
+            105:Insufficient Funds
+            106:Insufficient Liquidity
+            107:Broker
+        '''
+        coinbasemktdata.msg_type = 3
+        coinbasemktdata.data.coinbase_mkt_done_order.order_id = message.get('order_id').encode('UTF-8') #if message.get('order_id') is not None else None
+        coinbasemktdata.data.coinbase_mkt_done_order.price = float(message.get('price')) if message.get('price') is not None else 0
+        coinbasemktdata.data.coinbase_mkt_done_order.remaining_size = float(message.get('remaining_size')) # will be 0 for filled orders or for cancel how went unfilled
+        if message.get('reason') == "Filled":
+            coinbasemktdata.data.coinbase_mkt_done_order.reason = b'F' #Filled
+        else:
+            coinbasemktdata.data.coinbase_mkt_done_order.reason = b'C' #Canceled
+            # that are authenticated and that originated with you the user return the reason in the cancel_reason field
+            coinbasemktdata.data.coinbase_mkt_done_order.cancel_reason = int(message.get('cancel_reason')) if message.get('cancel_reason') is not None else 0
+        if message.get('side').lower() == "buy":
+            coinbasemktdata.data.coinbase_mkt_done_order.buysell = 0 #BUY
+        else:
+            coinbasemktdata.data.coinbase_mkt_done_order.buysell = 1 #SELL
+
+    elif type_ == 'match':
+        #A trade occurred between two orders.
+        coinbasemktdata.msg_type = 4
+        coinbasemktdata.data.coinbase_mkt_match_order.maker_order_id = message.get('maker_order_id').encode('UTF-8') #if message.get('maker_order_id') is not None else None
+        coinbasemktdata.data.coinbase_mkt_match_order.taker_order_id = message.get('taker_order_id').encode('UTF-8') #if message.get('taker_order_id') is not None else None
+        coinbasemktdata.data.coinbase_mkt_match_order.trade_id = int(message.get('trade_id'))
+        coinbasemktdata.data.coinbase_mkt_match_order.size = float(message.get('size'))
+        coinbasemktdata.data.coinbase_mkt_match_order.price = float(message.get('price'))
+        #The side field indicates the maker order side.
+        # If the side is sell this indicates the maker was a sell order and the match is considered an up-tick. A buy side match is a down-tick.
+        if message.get('side').lower() == "buy":
+            coinbasemktdata.data.coinbase_mkt_match_order.buysell = 0 #BUY
+        else:
+            coinbasemktdata.data.coinbase_mkt_match_order.buysell = 1 #SELL
+        #If authenticated, the message would also have the extra fields: userid, taker profile profile id, taker_fee_rate
+    elif type_ == 'change':
+        #A change message can be the result of either a Self-trade Prevention (STP) or a Modify Order Request (beta):
+        #If you are building a real-time order book, you can ignore change messages for received but not yet open orders.
+        coinbasemktdata.msg_type = 5
+        coinbasemktdata.data.coinbase_mkt_change_order.order_id = message.get('order_id').encode('UTF-8') #if message.get('order_id') is not None else None
+        coinbasemktdata.data.coinbase_mkt_change_order.old_size  = float(message.get('old_size'))
+        coinbasemktdata.data.coinbase_mkt_change_order.new_size  = float(message.get('new_size'))
+        #STP messages have a new reason field and continue to use the price field (not new_price and old_price).
+        coinbasemktdata.data.coinbase_mkt_change_order.old_price = float(message.get('old_price')) if message.get('old_price') is not None else float(message.get('price'))
+        coinbasemktdata.data.coinbase_mkt_change_order.new_price = float(message.get('new_price')) if message.get('new_price') is not None else float(message.get('price'))
+        if message.get('side').lower() == "buy":
+            coinbasemktdata.data.coinbase_mkt_done_order.buysell = 0 #BUY
+        else:
+            coinbasemktdata.data.coinbase_mkt_done_order.buysell = 1 #SELL
+        if message.get('reason').lower() == "STP":
+            #A Self-trade Prevention adjusts the order size or available funds (and can only decrease).
+            coinbasemktdata.data.coinbase_mkt_done_order.reason = b'S' # SELF Trade Prevention(STP)
+        else:
+            coinbasemktdata.data.coinbase_mkt_done_order.reason = b'M' # Modify
+    elif type_ == 'activate':
+        #An activate message is sent when a stop order is placed.
+        coinbasemktdata.msg_type = 6
+        coinbasemktdata.data.coinbase_mkt_active_order.profile_id = message.get('profile_id').encode('UTF-8') #if message.get('profile_id') is not None else None
+        coinbasemktdata.data.coinbase_mkt_active_order.order_id = message.get('order_id').encode('UTF-8') #if message.get('order_id') is not None else None
+        coinbasemktdata.data.coinbase_mkt_active_order.stop_price = float(message.get('stop_price'))
+        coinbasemktdata.data.coinbase_mkt_active_order.size = float(message.get('size'))
+        coinbasemktdata.data.coinbase_mkt_active_order.funds = float(message.get('funds'))
+        coinbasemktdata.data.coinbase_mkt_active_order.user_id = int(message.get('user_id'))
+        if message.get('side').lower() == "buy":
+            coinbasemktdata.data.coinbase_mkt_active_order.buysell = 0 #BUY
+        else:
+            coinbasemktdata.data.coinbase_mkt_active_order.buysell = 1 #SELL
+        if message.get('stop_type').lower() == "entry":
+            coinbasemktdata.data.coinbase_mkt_active_order.stop_type = b"E" #ENTRY
+        else:
+            coinbasemktdata.data.coinbase_mkt_active_order.stop_type = b"I" #Invalid(No 2nd type yet)
+        coinbasemktdata.data.coinbase_mkt_active_order.private_ = message.get('private')
+
+def on_open(ws):
+    subscribe_ = {
+      "type": "subscribe",
+      "product_ids": product,
+  #    "currencies": [ "BTC", "USD" ],
+      "channels": channels_
+    }
+    ws.send(json.dumps(subscribe_))
+    logging.info("Subscription Request Sent")
+
+def on_message(ws, data):
+    global current_date, prev_date
+    message = json.loads(data)
+    debug_str = "Message Recieved: " + str(message)
+    logging.debug(debug_str)
+    type_ = message.get('type')
+    debug_str = "Message Recieved of Type Update: " + type_
+#    logging.debug(debug_str)
+
+    if type_ == 'l2update':
+        logging.debug(debug_str)
+        logging.debug("Not Handled")
+        pass
+    elif  type_ == 'received' or type_ == 'open' or type_ == 'done' or type_ == 'match' or type_ == 'change' or type_ == 'activate':
+        prod = message.get('product_id')
+  #      print(prod)
+        seq = message.get('sequence')
+        debug_str = "Msg Sequence: " + str(seq)
+        if  seq > product_seq[prod]:
+            print("Drop of: ", product_seq[prod]," from Seq: " ,seq , " of Size: ", seq - product_seq[prod])
+        elif seq < product_seq[prod]:
+            print ("Msg Sequence already recieved: " , seq , " Expected: ", product.seq[prod])
+            return
+        file_obj = product_file[prod]
+        decodeMessage(message)
+#        print("Current Date: ", current_date, " Prev Date: ", prev_date)
+        if current_date != prev_date:
+            file_name = params_.myvars["location"].strip() + "/" + prod.strip() + "_" + str(prev_date)
+            info_str = "Closing File: " + file_name
+            logging.info(info_str)
+            prev_date = current_date
+            file_name = params_.myvars["location"].strip() + "/" + prod.strip() + "_" + str(prev_date)
+            info_str = "Opening File:: " + file_name
+            logging.info(info_str)
+            #file_object = open(file_name, 'ab') TESTING PURPOSE
+            file_obj = open(file_name, 'wb')
+            product_file[prod] = file_obj
+
+#        array = bytearray(coinbasemktdata)
+#        print(len(array))
+        file_obj.write(bytearray(coinbasemktdata))
+
+        product_seq[prod] = seq + 1
+#        debug_str = "Next expected msg Seq: " + str(product_seq[prod])
+#        logging.debug(debug_str)
+    elif type_ == 'ticker':
+        logging.debug(debug_str)
+        logging.debug("Not Handled")
+        pass
+    elif type_ == 'snapshot':
+        logging.debug(debug_str)
+        logging.debug("Not Handled")
+        pass
+    elif type_ == 'heartbeat':
+        logging.debug(debug_str)
+        logging.debug("Not Handled")
+        pass
+    elif type_ == 'subscriptions':
+        logging.debug(debug_str)
+        logging.debug("Not Handled")
+        print(message)
+        pass
+    elif message.get('message') is not None:
+        logging.debug(debug_str)
+        logging.debug("Not Handled")
+        print(message['message'])
+    else:
+        logging.debug(debug_str)
+        logging.debug("Not Handled")
+        debug_str = "Unknown type of Message:  " + type_
+        logging.debug(debug_str)
+#        print(type_)
+        pass
+
+def on_error(ws, error):
+    error_str = 'Error:' + str(error)
+    logging.error(error_str)
+
+def on_close(ws, close_status_code, close_message):
+    warning_str = "WebSocket Closed: " + close_message + " " + close_status_code
+    logging.warning(warning_str)
+    now = datetime.now()
+    current_time = now.strftime("%Y-%m-%d %H:%M:%S")
+    warning_str = "Server down Time = ", current_time
+    logging.warning(warning_str)
+    return
+    # Not Closing Files as it will try to reconnect itself
+    for prod in product:
+        product_file[prod].close()
+        logging.warning(prod)
+    logging.warning("All Open File Closed")
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--debug")
+parser.add_argument("--trace")
+parser.add_argument("--info")
+
+args = parser.parse_args()
+enable_debug = bool(args.debug) if args.debug else False
+enable_info = bool(args.info) if args.info else False
+enable_trace = bool(args.trace) if args.trace else False
+## For Debugging Purpose
+if enable_debug: # enable both info and debug
+    logging.basicConfig(level=logging.DEBUG)
+    logging.debug('---------------------------Debugging Messages Enabled-------------------------')
+    logging.info('---------------------------Info Messages Enabled-------------------------')
+if enable_info:  # enable only info
+    logging.basicConfig(level=logging.INFO)
+    logging.info('---------------------------Info Messages Enabled-------------------------')
+## Tracing Packet from Websocket
+if enable_trace:
+    websocket.enableTrace(True)
+    websocket._logging._logger.level = -99
+    logging.debug('---------------------------Tracing WebSocket Enabled--------------------------')
+
+
+params_ = load_param.LoadParam()
+for x in params_.myvars:
+    info_str = x +" = " + params_.myvars[x]
+    logging.info(info_str)
+info_str = "Exchange EndPoint to Connect " + params_.myvars["Endpoint"]
+logging.info(info_str)
+product = list(params_.myvars["product_ids"].strip().split(","))
+#product = ["LTC-USD"]
+#product_ticker_ = list(params_.myvars["ticker"].split(","))
+logging.debug("Product Data Logging...")
+for x in range(len(product)):
+    logging.debug(product[x])
+logging.debug("End..")
+
+channels_ = list(params_.myvars["channels"].strip().split(","))
+logging.debug("Channel Data Logging...")
+for x in range(len(channels_)):
+    logging.debug(channels_[x])
+logging.debug("End..")
+
+product_file = {}
+product_seq = {}
+coinbasemktdata = struct_types_coinbase.CoinBaseMktStruct()
+for prod in product:
+    file_name = params_.myvars["location"].strip() + "/" + prod.strip()
+    info_str = "Opening File:: " + file_name
+    logging.info(info_str)
+#    file_object = open(file_name, 'ab') TESTING PURPOSE
+    file_object = open(file_name, 'ab')
+    product_file[prod] = file_object
+    product_seq[prod] = 1
+
+ws = websocket.WebSocketApp(params_.myvars["Endpoint"],
+        on_message=on_message,
+        on_close=on_close,
+        on_error=on_error,
+        on_open=on_open)
+
+ws.run_forever(dispatcher=rel)
+# Set dispatcher to automatic reconnection
+rel.signal(2, rel.abort)  # Keyboard Interrupt
+rel.dispatch()

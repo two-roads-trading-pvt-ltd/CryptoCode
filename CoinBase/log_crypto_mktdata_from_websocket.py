@@ -4,9 +4,11 @@ import sys
 import websocket
 import load_param
 import json
+from datetime import datetime
 from websocket import create_connection
 
-###websocket.enableTrace(True)
+websocket.enableTrace(True)
+websocket._logging._logger.level = -99
 
 params_ = load_param.LoadParam()
 for x in params_.myvars:
@@ -71,6 +73,9 @@ def on_error(ws, error):
 
 def on_close(ws, close_status_code, close_message):
     print('WebSocket Closed:', close_message, close_status_code)
+    now = datetime.now()
+    current_time = now.strftime("%Y-%m-%d %H:%M:%S")
+    print("Server down Time =", current_time)
     for prod in product:
         product_file[prod].close()
 
@@ -89,4 +94,7 @@ ws = websocket.WebSocketApp(params_.myvars["Endpoint"],
         on_error=on_error,
         on_open=on_open)
 
+now = datetime.now()
+current_time = now.strftime("%Y-%m-%d %H:%M:%S")
+print("Server Uptime Time =", current_time)
 ws.run_forever()
