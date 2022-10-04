@@ -25,7 +25,7 @@ class CoinBaseLogger(threading.Thread):
     print("Starting Client For Date: ", prev_date)
     coinbasemktdata = struct_types_coinbase.CoinBaseMktStruct()
     product_seq = 1
-    
+
     def __init__(self, product, channel ):
         self.product = [product]
         self.channels_ = channel
@@ -35,22 +35,25 @@ class CoinBaseLogger(threading.Thread):
 #    file_object = open(file_name, 'ab') TESTING PURPOSE
         file_object = open(file_name, 'ab')
         self.product_file = file_object
-        
+
         self.connect()
         threading.Thread.__init__(self)
-    
+
     def connect(self):
         print("WebSocket Connect Call ",self.product )
+        coinbase_protocol = "permessage-deflate"
+        protocol_str = "Sec-WebSocket-Extensions:" + coinbase_protocol
         self.ws = websocket.WebSocketApp(params_.myvars["Endpoint"],
+#            header = [protocol_str],
             on_message=self.on_message,
             on_close=self.on_close,
             on_error=self.on_error,
             on_open=self.on_open)
-        
+
     def run(self):
         print("Running Forever ",self.product)
         self.ws.run_forever(skip_utf8_validation = True)
-        # dispatcher=rel) 
+        # dispatcher=rel)
         # Set dispatcher to automatic reconnection
         #only Works in Int Main
   #      rel.signal(2, rel.abort)  # Keyboard Interrupt
@@ -59,9 +62,10 @@ class CoinBaseLogger(threading.Thread):
         print("WebSocket Reconnect Call ", self.product)
         self.connect()
         self.ws.run_forever(skip_utf8_validation = True)
-        
-        
+
+
     def decodeMessage(self, message):
+        return
         type_ = message.get('type')
         #debug_str = "Decode Message Type: " + type_
         #logging.debug(debug_str)
@@ -110,8 +114,8 @@ class CoinBaseLogger(threading.Thread):
             else:
                 self.coinbasemktdata.data.coinbase_mkt_open_order.buysell = 1 #SELL
         elif type_ == 'done':
-            #There are no more messages for an order_id after a done message. 
-            ''' Cancel Order Reason only for authencicated users 
+            #There are no more messages for an order_id after a done message.
+            ''' Cancel Order Reason only for authencicated users
                 101:Time In Force
                 102:Self Trade Prevention
                 103:Admin
@@ -206,6 +210,7 @@ class CoinBaseLogger(threading.Thread):
         logging.warning(warning_str)
 
     def on_message(self, ws, data):
+        return
         message = json.loads(data)
         debug_str = "Message Recieved: " + str(message)
         logging.debug(debug_str)
