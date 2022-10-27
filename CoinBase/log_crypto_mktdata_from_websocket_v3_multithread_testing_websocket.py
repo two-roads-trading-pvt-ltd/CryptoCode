@@ -210,11 +210,11 @@ class CoinBaseLogger(threading.Thread):
         logging.warning(warning_str)
 
     def on_message(self, ws, data):
-        return
         message = json.loads(data)
         debug_str = "Message Recieved: " + str(message)
         logging.debug(debug_str)
         type_ = message.get('type')
+        return 
         #debug_str = "Message Recieved of Type Update: " + type_
         #logging.debug(debug_str)
 
@@ -333,6 +333,7 @@ for x in params_.myvars:
 info_str = "Exchange EndPoint to Connect " + params_.myvars["Endpoint"]
 logging.info(info_str)
 product = list(params_.myvars["product_ids"].strip().split(","))
+product = ["VGX-USD"]
 #product_ticker_ = list(params_.myvars["ticker"].split(","))
 logging.debug("Product Data Logging...")
 for x in range(len(product)):

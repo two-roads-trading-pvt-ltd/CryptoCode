@@ -123,7 +123,7 @@ class CoinBaseLogger(threading.Thread):
             self.coinbasemktdata.msg_type = 3
             self.coinbasemktdata.data.coinbase_mkt_done_order.order_id = message.get('order_id').encode('UTF-8') #if message.get('order_id') is not None else None
             self.coinbasemktdata.data.coinbase_mkt_done_order.price = float(message.get('price')) if message.get('price') is not None else 0
-            self.coinbasemktdata.data.coinbase_mkt_done_order.remaining_size = float(message.get('remaining_size')) # will be 0 for filled orders or for cancel how went unfilled
+            self.coinbasemktdata.data.coinbase_mkt_done_order.remaining_size = float(message.get('remaining_size')) if message.get('remaining_size') is not None else 0 # will be 0 for filled orders or for cancel how went unfilled
             if message.get('reason') == "Filled":
                 self.coinbasemktdata.data.coinbase_mkt_done_order.reason = b'F' #Filled
             else:
@@ -161,14 +161,14 @@ class CoinBaseLogger(threading.Thread):
             self.coinbasemktdata.data.coinbase_mkt_change_order.old_price = float(message.get('old_price')) if message.get('old_price') is not None else float(message.get('price'))
             self.coinbasemktdata.data.coinbase_mkt_change_order.new_price = float(message.get('new_price')) if message.get('new_price') is not None else float(message.get('price'))
             if message.get('side').lower() == "buy":
-                self.coinbasemktdata.data.coinbase_mkt_done_order.buysell = 0 #BUY
+                self.coinbasemktdata.data.coinbase_mkt_change_order.buysell = 0 #BUY
             else:
-                self.coinbasemktdata.data.coinbase_mkt_done_order.buysell = 1 #SELL
+                self.coinbasemktdata.data.coinbase_mkt_change_order.buysell = 1 #SELL
             if message.get('reason').lower() == "STP":
                 #A Self-trade Prevention adjusts the order size or available funds (and can only decrease).
-                self.coinbasemktdata.data.coinbase_mkt_done_order.reason = b'S' # SELF Trade Prevention(STP)
+                self.coinbasemktdata.data.coinbase_mkt_change_order.reason = b'S' # SELF Trade Prevention(STP)
             else:
-                self.coinbasemktdata.data.coinbase_mkt_done_order.reason = b'M' # Modify
+                self.coinbasemktdata.data.coinbase_mkt_change_order.reason = b'M' # Modify
         elif type_ == 'activate':
             #An activate message is sent when a stop order is placed.
             self.coinbasemktdata.msg_type = 6
