@@ -31,16 +31,13 @@ print(historical_key)
 datasets.download(
     exchange=exchange_,
     data_types=[
-        "incremental_book_L2",
         "trades",
-        "quotes",
-        "derivative_ticker",
         "book_snapshot_25",
-        "liquidations"
+        "book_ticker"
     ],
     from_date=fromDate_,
     to_date=toDate_,
     symbols=[symbol_],
-    download_dir = output_path,
     api_key=historical_key,
+    download_dir = output_path,
 )

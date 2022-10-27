@@ -1,0 +1,4 @@
+Endpoint=wss://ftx.com/ws/
+product_ids=BTC-PERP
+location=/NAS1/subham/CryptoData
+channels=trades,ticker,orderbook
