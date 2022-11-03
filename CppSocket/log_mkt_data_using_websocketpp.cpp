@@ -50,8 +50,8 @@
 #include <websocketpp/client.hpp>
 #include <websocketpp/config/asio_client.hpp>
 
-#include "CryptoCode/CryptoUtils/websocket_endpoint.hpp"
 #include "CryptoCode/CryptoUtils/websocket_setting.hpp"
+#include "CryptoCode/CryptoUtils/websocket_coinbase_endpoint.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <map>
@@ -68,7 +68,8 @@ void PrintUsage(const char *prg_name) {
 
 int main(int argc, char **argv) {
   std::string input;
-  WebsocketEndpoint endpoint;
+//  WebsocketEndpoint endpoint;
+  CRYPTO::WebsocketCoinBaseEndpoint endpoint(1); 
   if (argc < 3) {
     PrintUsage(argv[0]);
     exit(0);
@@ -82,15 +83,10 @@ int main(int argc, char **argv) {
     if (id != -1) {
       std::cout << "> Created connection with id " << id << std::endl;
     }
-    ConnectionCoinBasedata::ptr metadata = endpoint.get_metadata(id);
-    if (metadata) {
-      std::cout << *metadata << std::endl;
-    } else {
-      std::cout << "> Unknown connection id " << id << std::endl;
-    }
   } else {
     std::cout << "Wrong Exchange Passed... " << exchange_ << std::endl;
   }
   //            endpoint.close(id, close_code, reason);
+  sleep(10000000);
   return 0;
 }

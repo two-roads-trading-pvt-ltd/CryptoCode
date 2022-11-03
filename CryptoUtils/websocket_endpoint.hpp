@@ -16,8 +16,9 @@
 #include <websocketpp/config/asio_client.hpp>
 
 #include "CryptoCode/CryptoUtils/websocket_setting.hpp"
-#include <CryptoCode/CryptoUtils/websocket_coinbase_connection_data.hpp>
-#include <CryptoCode/CryptoUtils/websocket_defines.hpp>
+#include "CryptoCode/CryptoUtils/websocket_coinbase_connection_data.hpp"
+#include "CryptoCode/CryptoUtils/websocket_defines.hpp"
+#include "CryptoCode/CryptoUtils/websocket_coinbase_endpoint.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <map>
@@ -26,21 +27,6 @@
 #include <unistd.h>
 #include <websocketpp/common/memory.hpp>
 #include <websocketpp/common/thread.hpp>
-
-context_ptr on_tls_init(websocketpp::connection_hdl) {
-  context_ptr ctx = websocketpp::lib::make_shared<boost::asio::ssl::context>(
-      boost::asio::ssl::context::sslv23);
-
-  try {
-    ctx->set_options(boost::asio::ssl::context::default_workarounds |
-                     boost::asio::ssl::context::no_sslv2 |
-                     boost::asio::ssl::context::no_sslv3 |
-                     boost::asio::ssl::context::single_dh_use);
-  } catch (std::exception &e) {
-    std::cout << e.what() << std::endl;
-  }
-  return ctx;
-}
 
 class WebsocketEndpoint {
 public:

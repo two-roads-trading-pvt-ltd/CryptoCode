@@ -51,6 +51,7 @@
 #include <websocketpp/config/asio_client.hpp>
 
 #include "CryptoCode/CryptoUtils/websocket_setting.hpp"
+#include <boost/property_tree/ptree.hpp>
 #include <CryptoCode/Utils/websocket_defines.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <websocketpp/common/memory.hpp>
