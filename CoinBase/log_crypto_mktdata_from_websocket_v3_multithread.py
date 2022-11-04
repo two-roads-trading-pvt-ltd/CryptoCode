@@ -208,17 +208,13 @@ class CoinBaseLogger(threading.Thread):
     def on_message(self, ws, data):
         message = json.loads(data)
         debug_str = "Message Recieved: " + str(message)
-        logging.debug(debug_str)
         type_ = message.get('type')
-        #debug_str = "Message Recieved of Type Update: " + type_
-        #logging.debug(debug_str)
 
         if type_ == 'l2update':
             logging.debug(debug_str)
             logging.debug("Not Handled")
         elif  type_ == 'received' or type_ == 'open' or type_ == 'done' or type_ == 'match' or type_ == 'change' or type_ == 'activate':
             prod = message.get('product_id')
-    #      print(prod)
             seq = message.get('sequence')
             debug_str = "Msg Sequence: " + str(seq)
             if  seq > self.product_seq:
@@ -226,13 +222,12 @@ class CoinBaseLogger(threading.Thread):
             elif seq < self.product_seq:
                 print ("Msg Sequence already recieved for " + str(self.product) + ": " , seq , " Expected: ", self.product_seq)
                 return
-            file_obj = self.product_file
-            self.decodeMessage(message)
-    #        print("Current Date: ", current_date, " Prev Date: ", prev_date)
             if self.current_date != self.prev_date:
                 file_name = params_.myvars["location"].strip() + "/" + prod.strip() + "_" + str(self.prev_date)
                 info_str = "Closing File: " + file_name
                 logging.info(info_str)
+                self.product_file.flush()
+                self.product_file.close()
                 self.prev_date = self.current_date
                 file_name = params_.myvars["location"].strip() + "/" + prod.strip() + "_" + str(self.prev_date)
                 info_str = "Opening File:: " + file_name
@@ -240,14 +235,10 @@ class CoinBaseLogger(threading.Thread):
                 #file_object = open(file_name, 'ab') TESTING PURPOSE
                 file_obj = open(file_name, 'wb')
                 self.product_file = file_obj
-
-    #        array = bytearray(self.coinbasemktdata)
-    #        print(len(array))
-            file_obj.write(bytearray(self.coinbasemktdata))
+            self.decodeMessage(message)
+            self.product_file.write(bytearray(self.coinbasemktdata))
 
             self.product_seq = seq + 1
-    #        debug_str = "Next expected msg Seq: " + str(product_seq[prod])
-    #        logging.debug(debug_str)
         elif type_ == 'ticker':
             logging.debug(debug_str)
             logging.debug("Not Handled")
@@ -292,6 +283,7 @@ class CoinBaseLogger(threading.Thread):
         return
         # Not Closing Files as it will try to reconnect itself
         for prod in product:
+            product_file[prod].flush()
             product_file[prod].close()
             logging.warning(prod)
         logging.warning("All Open File Closed")
