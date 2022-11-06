@@ -47,19 +47,24 @@
 // Additional related material can be found in the tutorials/utility_client
 // directory of the WebSocket++ repository.
 
-#include <websocketpp/client.hpp>
-#include <websocketpp/config/asio_client.hpp>
-
-#include "CryptoCode/CryptoUtils/websocket_setting.hpp"
-#include "CryptoCode/CryptoUtils/websocket_coinbase_endpoint.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
 #include <unistd.h>
+#include <websocketpp/client.hpp>
 #include <websocketpp/common/memory.hpp>
 #include <websocketpp/common/thread.hpp>
+#include <websocketpp/config/asio_client.hpp>
+
+#include "CryptoCode/CRYPTOMD/coinbase_mtbt_raw_handler.hpp"
+#include "CryptoCode/CryptoUtils/websocket_mtbt_endpoint.hpp"
+#include "CryptoCode/CryptoUtils/websocket_setting.hpp"
+#include "dvccode/CDef/debug_logger.hpp"
+#include "dvccode/CommonTradeUtils/date_time.hpp"
+
+HFSAT::DebugLogger *global_dbglogger_;
 
 void PrintUsage(const char *prg_name) {
   printf(" This is the Wocket Loggin daemon exec \n");
@@ -68,18 +73,37 @@ void PrintUsage(const char *prg_name) {
 
 int main(int argc, char **argv) {
   std::string input;
-//  WebsocketEndpoint endpoint;
-  CRYPTO::WebsocketCoinBaseEndpoint endpoint(1); 
+  //  WebsocketEndpoint endpoint;
   if (argc < 3) {
     PrintUsage(argv[0]);
     exit(0);
   }
+
   std::string config_file = argv[1];
   std::string exchange_ = argv[2];
+  bool run_logger = false;
+  if (argc > 3 && std::string(argv[3]) == "LOGGER") run_logger = true;
+
   CRYPTO::WebSocketSettings::SetUniqueInstance(config_file);
   CRYPTO::WebSocketSettings::GetUniqueInstance().ToString();
+
+  HFSAT::DebugLogger dbglogger_(10240, 1);
+  std::string logfilename = "/spare/local/logs/log_mtbt_crypto_writer_dbg" + std::string("_") + exchange_ +
+                            std::string("_") + HFSAT::DateTime::GetCurrentIsoDateLocalAsString() + ".log";
+
+  dbglogger_.OpenLogFile(logfilename.c_str(), std::ios::out | std::ios::app);
+  global_dbglogger_ = &dbglogger_;
+
+  dbglogger_ << "\n\nOpenDbglogger\n";
+  dbglogger_ << "Running For Exchange_ " << exchange_ << "\n";
+  dbglogger_.DumpCurrentBuffer();
+
+  CRYPTO::CoinBaseRawMDHandler *coinbase_raw_handler_ =
+      &(CRYPTO::CoinBaseRawMDHandler::GetUniqueInstance(dbglogger_, run_logger));
+  CRYPTO::WebsocketMTBTEndpoint *endpoint;
   if (exchange_ == "COINBASE") {
-    int id = endpoint.connect("COINBASE");
+    endpoint = new CRYPTO::WebsocketMTBTEndpoint(coinbase_raw_handler_, dbglogger_, exchange_, 1);
+    int id = endpoint->connect();
     if (id != -1) {
       std::cout << "> Created connection with id " << id << std::endl;
     }

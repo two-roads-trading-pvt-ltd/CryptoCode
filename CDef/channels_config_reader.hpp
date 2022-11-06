@@ -10,10 +10,8 @@
 
 namespace CryptoUtil {
 
-bool ReadChannelConfig(
-    std::ifstream &stream_config,
-    std::map<std::string, std::vector<std::string>> &config_loaded);
+bool ReadChannelConfig(std::ifstream &stream_config, std::map<std::string, std::vector<std::string>> &config_loaded);
 
 };
 
-#endif // BASE_TCRYPTO_CHANNEL_READ_CONFIG_H
+#endif  // BASE_TCRYPTO_CHANNEL_READ_CONFIG_H

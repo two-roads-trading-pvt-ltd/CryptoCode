@@ -1,5 +1,5 @@
 /**
-    \file Utils/websocket_setting.hpp
+    \file CDef/websocket_setting.hpp
 
     \author: (c) Copyright Two Roads Technological Solutions Pvt Ltd 2011
      Address:
@@ -12,7 +12,7 @@
 
 #ifndef BASE_CRYPTO_SETTINGS_H
 #define BASE_CRYPTO_SETTINGS_H
-#include "CryptoUtils/websocket_config_reader.hpp"
+#include "CDef/channels_config_reader.hpp"
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -26,7 +26,7 @@ class WebSocketSettings {
   WebSocketSettings(WebSocketSettings const &disabled_copy_constructor);
   ~WebSocketSettings() { values.clear(); }
 
-public:
+ public:
   static void SetUniqueInstance(const std::string file);
   static WebSocketSettings &GetUniqueInstance();
 
@@ -35,9 +35,9 @@ public:
   std::string GetFileName();
   std::string ToString();
 
-protected:
+ protected:
   std::map<std::string, std::vector<std::string>> values;
   std::string config_file_;
 };
-} // namespace CRYPTO
-#endif // BASE_CRYPTO_SETTINGS_H
+}  // namespace CRYPTO
+#endif  // BASE_CRYPTO_SETTINGS_H

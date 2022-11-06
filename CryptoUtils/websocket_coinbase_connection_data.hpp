@@ -47,16 +47,8 @@
 // Additional related material can be found in the tutorials/utility_client
 // directory of the WebSocket++ repository.
 
-#include <websocketpp/client.hpp>
-#include <websocketpp/config/asio_client.hpp>
-
-#include "CryptoCode/CryptoUtils/websocket_setting.hpp"
-#include <boost/property_tree/ptree.hpp>
-#include <CryptoCode/Utils/websocket_defines.hpp>
 #include <boost/property_tree/json_parser.hpp>
-#include <websocketpp/common/memory.hpp>
-#include <websocketpp/common/thread.hpp>
-
+#include <boost/property_tree/ptree.hpp>
 #include <cstdlib>
 #include <iostream>
 #include <map>
@@ -64,28 +56,34 @@
 #include <string>
 #include <unistd.h>
 #include <unordered_map>
+#include <websocketpp/client.hpp>
+#include <websocketpp/common/memory.hpp>
+#include <websocketpp/common/thread.hpp>
+#include <websocketpp/config/asio_client.hpp>
+
+#include "CryptoCode/CDef/websocket_defines.hpp"
+#include "CryptoCode/CDef/websocket_mtbt_listener.hpp"
+#include "CryptoCode/CDef/websocket_setting.hpp"
+
+namespace CRYPTO {
 
 class ConnectionCoinBasedata {
-public:
+ public:
   typedef websocketpp::lib::shared_ptr<ConnectionCoinBasedata> ptr;
 
-  ConnectionCoinBasedata(
-      int id, websocketpp::connection_hdl hdl, std::string uri,
-      websocketpp::client<websocketpp::config::asio_tls_client> *m_endpoint_)
-      : m_id(id), m_hdl(hdl), m_status("Connecting"), m_uri(uri),
-        m_endpoint(m_endpoint_), m_server("N/A") {}
+  ConnectionCoinBasedata(int id, websocketpp::connection_hdl hdl, std::string uri,
+                         websocketpp::client<websocketpp::config::asio_tls_client> *m_endpoint_)
+      : m_id(id), m_hdl(hdl), m_status("Connecting"), m_uri(uri), m_endpoint(m_endpoint_), m_server("N/A") {}
 
   void on_open(client *c, websocketpp::connection_hdl hdl) {
     m_status = "Open";
     websocketpp::lib::error_code ec;
-    std::vector<std::string> product_ids =
-        CRYPTO::WebSocketSettings::GetUniqueInstance().getValue("product_ids");
+    std::vector<std::string> product_ids = CRYPTO::WebSocketSettings::GetUniqueInstance().getValue("CB_product_ids");
     if (product_ids.size() == 0) {
       std::cerr << "Error No Products passed: " << std::endl;
       exit(-1);
     }
-    std::vector<std::string> channels =
-        CRYPTO::WebSocketSettings::GetUniqueInstance().getValue("channels");
+    std::vector<std::string> channels = CRYPTO::WebSocketSettings::GetUniqueInstance().getValue("CB_channels");
     if (channels.size() == 0) {
       std::cerr << "Error No Products passed: " << std::endl;
       exit(-1);
@@ -119,8 +117,7 @@ public:
 
     client::connection_ptr con = c->get_con_from_hdl(hdl);
     m_server = con->get_response_header("Server");
-    std::cout << "ClientStatus: " << m_status << " ServerStatus: " << m_server
-              << std::endl;
+    std::cout << "ClientStatus: " << m_status << " ServerStatus: " << m_server << std::endl;
   }
 
   void on_fail(client *c, websocketpp::connection_hdl hdl) {
@@ -128,8 +125,8 @@ public:
     client::connection_ptr con = c->get_con_from_hdl(hdl);
     m_server = con->get_response_header("Server");
     m_error_reason = con->get_ec().message();
-    std::cout << "ClientStatus: " << m_status << " ServerStatus: " << m_server
-              << " Reason: " << m_error_reason << std::endl;
+    std::cout << "ClientStatus: " << m_status << " ServerStatus: " << m_server << " Reason: " << m_error_reason
+              << std::endl;
   }
 
   void on_close(client *c, websocketpp::connection_hdl hdl) {
@@ -140,43 +137,39 @@ public:
       << websocketpp::close::status::get_string(con->get_remote_close_code())
       << "), close reason: " << con->get_remote_close_reason();
     m_error_reason = s.str();
-    std::cout << "ClientStatus: " << m_status << " ServerStatus: " << m_server
-              << " Reason: " << m_error_reason << std::endl;
+    std::cout << "ClientStatus: " << m_status << " ServerStatus: " << m_server << " Reason: " << m_error_reason
+              << std::endl;
   }
 
   void on_message(websocketpp::connection_hdl, client::message_ptr msg) {
     //	  std::cout <<"Open On_message: " << m_status << std::endl;
     if (msg->get_opcode() == websocketpp::frame::opcode::text) {
       m_messages.push_back("<< " + msg->get_payload());
-      std::cout << "Getting Payload opcode" << msg->get_payload()
-                << std::endl; // current getting in this
+      std::cout << "Getting Payload opcode" << msg->get_payload() << std::endl;  // current getting in this
 
     } else {
-      m_messages.push_back("<< " +
-                           websocketpp::utility::to_hex(msg->get_payload()));
-      std::cout << "Getting Payload hex "
-                << websocketpp::utility::to_hex(msg->get_payload())
-                << std::endl;
+      m_messages.push_back("<< " + websocketpp::utility::to_hex(msg->get_payload()));
+      std::cout << "Getting Payload hex " << websocketpp::utility::to_hex(msg->get_payload()) << std::endl;
     }
 
     std::stringstream ss(msg->get_payload());
     boost::property_tree::read_json(ss, pt);
-    std::string type_ = pt.get<std::string>("type") ;
+    std::string type_ = pt.get<std::string>("type");
     if (type_ == "l2update") {
       std::cout << "Message Type Not Handled: " << type_ << std::endl;
-    } else if (type_ == "received" || type_ == "open" || type_ == "done" ||
-               type_ == "match" || type_ == "change" or type_ == "activate") {
-	std::string product_id_ = pt.get<std::string>("product_id");
-	long long seq_ = pt.get<long long>("sequence");
-//	std::cout << product_id_ << " "  << seq_ << std::endl;
-	if ( seq_ > product_to_seq[product_id_] ){
-		std::cout << "Drop for " << product_id_  << " of: " << product_to_seq[product_id_] << " from Seq: " 
-			<< seq_ << " of Size: " << seq_ - product_to_seq[product_id_] << std::endl;
-	} else if ( seq_ < product_to_seq[product_id_]){
-              std::cout << "Msg Sequence already recieved for " << product_id_ << ": " << seq_ << " Expected: "
-		      << product_to_seq[product_id_] << std::endl;
-          }
-	product_to_seq[product_id_] = seq_ + 1;
+    } else if (type_ == "received" || type_ == "open" || type_ == "done" || type_ == "match" || type_ == "change" or
+               type_ == "activate") {
+      std::string product_id_ = pt.get<std::string>("product_id");
+      long long seq_ = pt.get<long long>("sequence");
+      //	std::cout << product_id_ << " "  << seq_ << std::endl;
+      if (seq_ > product_to_seq[product_id_]) {
+        std::cout << "Drop for " << product_id_ << " of: " << product_to_seq[product_id_] << " from Seq: " << seq_
+                  << " of Size: " << seq_ - product_to_seq[product_id_] << std::endl;
+      } else if (seq_ < product_to_seq[product_id_]) {
+        std::cout << "Msg Sequence already recieved for " << product_id_ << ": " << seq_
+                  << " Expected: " << product_to_seq[product_id_] << std::endl;
+      }
+      product_to_seq[product_id_] = seq_ + 1;
 
     } else if (type_ == "ticker") {
       std::cout << "Message Type Not Handled: " << type_ << std::endl;
@@ -197,13 +190,10 @@ public:
 
   std::string get_status() const { return m_status; }
 
-  void record_sent_message(std::string message) {
-    m_messages.push_back(">> " + message);
-  }
-  friend std::ostream &operator<<(std::ostream &out,
-                                  ConnectionCoinBasedata const &data);
+  void record_sent_message(std::string message) { m_messages.push_back(">> " + message); }
+  friend std::ostream &operator<<(std::ostream &out, ConnectionCoinBasedata const &data);
 
-private:
+ private:
   int m_id;
   websocketpp::connection_hdl m_hdl;
   std::string m_status;
@@ -217,14 +207,11 @@ private:
   //  CRYPTO::CoinBaseDecoder  coinbasedecoder;
 };
 
-std::ostream &operator<<(std::ostream &out,
-                         ConnectionCoinBasedata const &data) {
+std::ostream &operator<<(std::ostream &out, ConnectionCoinBasedata const &data) {
   out << "> URI: " << data.m_uri << "\n"
       << "> Status: " << data.m_status << "\n"
-      << "> Remote Server: "
-      << (data.m_server.empty() ? "None Specified" : data.m_server) << "\n"
-      << "> Error/close reason: "
-      << (data.m_error_reason.empty() ? "N/A" : data.m_error_reason) << "\n";
+      << "> Remote Server: " << (data.m_server.empty() ? "None Specified" : data.m_server) << "\n"
+      << "> Error/close reason: " << (data.m_error_reason.empty() ? "N/A" : data.m_error_reason) << "\n";
   out << "> Messages Processed: (" << data.m_messages.size() << ") \n";
 
   std::vector<std::string>::const_iterator it;
@@ -234,3 +221,5 @@ std::ostream &operator<<(std::ostream &out,
 
   return out;
 }
+
+}  // namespace CRYPTO

@@ -10,7 +10,7 @@
    +91 80 4060 0717
  */
 
-#include "CryptoCode/CryptoUtils/websocket_setting.hpp"
+#include "CryptoCode/CDef/websocket_setting.hpp"
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -19,8 +19,7 @@
 
 namespace CRYPTO {
 WebSocketSettings *unique_instance_ = nullptr;
-WebSocketSettings::WebSocketSettings(const std::string file)
-    : config_file_(file) {
+WebSocketSettings::WebSocketSettings(const std::string file) : config_file_(file) {
   values.clear();
   /// read key value pairs of settings from file
 
@@ -49,15 +48,12 @@ WebSocketSettings &WebSocketSettings::GetUniqueInstance() {
   return *unique_instance_;
 }
 
-bool WebSocketSettings::has(std::string key) const {
-  return (values.find(key) != values.end());
-}
+bool WebSocketSettings::has(std::string key) const { return (values.find(key) != values.end()); }
 
 std::vector<std::string> WebSocketSettings::getValue(std::string key) const {
   auto v = values.find(key);
   if (v == values.end()) {
-    std::cout << "Value For Key " << key << "  Does exist Exiting... "
-              << std::endl;
+    std::cout << "Value For Key " << key << "  Does exist Exiting... " << std::endl;
     exit(-1);
   } else {
     v->second;
@@ -73,8 +69,7 @@ std::string WebSocketSettings::ToString() {
 
   for (auto &itr : values) {
     std::cout << itr.first << "->";
-    for (auto value : itr.second)
-      std::cout << value;
+    for (auto value : itr.second) std::cout << value;
     std::cout << "\n";
   }
 
@@ -82,4 +77,4 @@ std::string WebSocketSettings::ToString() {
 
   return t_temp_oss.str();
 }
-} // namespace CRYPTO
+}  // namespace CRYPTO

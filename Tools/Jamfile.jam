@@ -1,6 +1,7 @@
 use-project /PDVCC : ../libdvccode ;
 
 use-project /PCryptoUtils : ../CryptoUtilsCode ;
+use-project /PCryptoCDef : ../CDefCode ;
 
 lib boost_program_options : : <name>boost_program_options <search>$(BOOST_LIB_INSTALL) ;
 
@@ -19,6 +20,7 @@ exe log_mkt_data_using_websocketpp
       /PDVCC//TradingInfo
       /PDVCC//Profiler
       /PCryptoUtils//libCryptoUtils
+      /PCryptoCDef//libCryptoCDefCode
 
     :
     : <variant>debug <variant>release
