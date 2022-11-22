@@ -15,7 +15,8 @@ import argparse
 #from websockets.extensions import permessage_deflate
 import rel
 import threading
-
+import numpy as np
+import ast
 
 class CoinBaseLogger(threading.Thread):
     global params_
@@ -24,36 +25,35 @@ class CoinBaseLogger(threading.Thread):
     current_date = prev_date
     print("Starting Client For Date: ", prev_date)
     coinbasemktdata = struct_types_coinbase.CoinBaseMktStruct()
-    product_seq = 1
-
+    product_file = {}
+    product_seq = {}
+    
     def __init__(self, product, channel ):
-        self.product = [product]
+        self.product = product
         self.channels_ = channel
-        file_name = params_.myvars["location"].strip() + "/" + product.strip() + "_" + str(self.prev_date)
-        info_str = "Opening File:: " + file_name
-        logging.info(info_str)
+        for prod in product:
+            file_name = params_.myvars["location"].strip() + "/" + prod.strip() + "_" + str(self.prev_date)
+            info_str = "Opening File:: " + file_name
+            logging.info(info_str)
 #    file_object = open(file_name, 'ab') TESTING PURPOSE
-        file_object = open(file_name, 'ab')
-        self.product_file = file_object
-
+            file_object = open(file_name, 'ab')
+            self.product_file[prod] = file_object
+            self.product_seq[prod] = 1
         self.connect()
         threading.Thread.__init__(self)
-
+    
     def connect(self):
-        print("WebSocket Connect Call ",self.product )
-        coinbase_protocol = "permessage-deflate"
-        protocol_str = "Sec-WebSocket-Extensions:" + coinbase_protocol
+        print("WebSocket Connect Call ", self.product )
         self.ws = websocket.WebSocketApp(params_.myvars["Endpoint"],
-#            header = [protocol_str],
             on_message=self.on_message,
             on_close=self.on_close,
             on_error=self.on_error,
             on_open=self.on_open)
-
+        
     def run(self):
         print("Running Forever ",self.product)
         self.ws.run_forever(skip_utf8_validation = True)
-        # dispatcher=rel)
+        # dispatcher=rel) 
         # Set dispatcher to automatic reconnection
         #only Works in Int Main
   #      rel.signal(2, rel.abort)  # Keyboard Interrupt
@@ -62,10 +62,9 @@ class CoinBaseLogger(threading.Thread):
         print("WebSocket Reconnect Call ", self.product)
         self.connect()
         self.ws.run_forever(skip_utf8_validation = True)
-
-
+        
+        
     def decodeMessage(self, message):
-        return
         type_ = message.get('type')
         #debug_str = "Decode Message Type: " + type_
         #logging.debug(debug_str)
@@ -114,8 +113,8 @@ class CoinBaseLogger(threading.Thread):
             else:
                 self.coinbasemktdata.data.coinbase_mkt_open_order.buysell = 1 #SELL
         elif type_ == 'done':
-            #There are no more messages for an order_id after a done message.
-            ''' Cancel Order Reason only for authencicated users
+            #There are no more messages for an order_id after a done message. 
+            ''' Cancel Order Reason only for authencicated users 
                 101:Time In Force
                 102:Self Trade Prevention
                 103:Admin
@@ -127,7 +126,7 @@ class CoinBaseLogger(threading.Thread):
             self.coinbasemktdata.msg_type = 3
             self.coinbasemktdata.data.coinbase_mkt_done_order.order_id = message.get('order_id').encode('UTF-8') #if message.get('order_id') is not None else None
             self.coinbasemktdata.data.coinbase_mkt_done_order.price = float(message.get('price')) if message.get('price') is not None else 0
-            self.coinbasemktdata.data.coinbase_mkt_done_order.remaining_size = float(message.get('remaining_size')) # will be 0 for filled orders or for cancel how went unfilled
+            self.coinbasemktdata.data.coinbase_mkt_done_order.remaining_size = float(message.get('remaining_size')) if message.get('remaining_size') is not None else 0 # will be 0 for filled orders or for cancel how went unfilled
             if message.get('reason') == "Filled":
                 self.coinbasemktdata.data.coinbase_mkt_done_order.reason = b'F' #Filled
             else:
@@ -165,14 +164,14 @@ class CoinBaseLogger(threading.Thread):
             self.coinbasemktdata.data.coinbase_mkt_change_order.old_price = float(message.get('old_price')) if message.get('old_price') is not None else float(message.get('price'))
             self.coinbasemktdata.data.coinbase_mkt_change_order.new_price = float(message.get('new_price')) if message.get('new_price') is not None else float(message.get('price'))
             if message.get('side').lower() == "buy":
-                self.coinbasemktdata.data.coinbase_mkt_done_order.buysell = 0 #BUY
+                self.coinbasemktdata.data.coinbase_mkt_change_order.buysell = 0 #BUY
             else:
-                self.coinbasemktdata.data.coinbase_mkt_done_order.buysell = 1 #SELL
+                self.coinbasemktdata.data.coinbase_mkt_change_order.buysell = 1 #SELL
             if message.get('reason').lower() == "STP":
                 #A Self-trade Prevention adjusts the order size or available funds (and can only decrease).
-                self.coinbasemktdata.data.coinbase_mkt_done_order.reason = b'S' # SELF Trade Prevention(STP)
+                self.coinbasemktdata.data.coinbase_mkt_change_order.reason = b'S' # SELF Trade Prevention(STP)
             else:
-                self.coinbasemktdata.data.coinbase_mkt_done_order.reason = b'M' # Modify
+                self.coinbasemktdata.data.coinbase_mkt_change_order.reason = b'M' # Modify
         elif type_ == 'activate':
             #An activate message is sent when a stop order is placed.
             self.coinbasemktdata.msg_type = 6
@@ -214,7 +213,6 @@ class CoinBaseLogger(threading.Thread):
         debug_str = "Message Recieved: " + str(message)
         logging.debug(debug_str)
         type_ = message.get('type')
-        return 
         #debug_str = "Message Recieved of Type Update: " + type_
         #logging.debug(debug_str)
 
@@ -226,12 +224,12 @@ class CoinBaseLogger(threading.Thread):
     #      print(prod)
             seq = message.get('sequence')
             debug_str = "Msg Sequence: " + str(seq)
-            if  seq > self.product_seq:
-                print("Drop for ", str(self.product)  + " of: ", self.product_seq, " from Seq: " , seq , " of Size: ", seq - self.product_seq)
-            elif seq < self.product_seq:
-                print ("Msg Sequence already recieved for " + str(self.product) + ": " , seq , " Expected: ", self.product_seq)
+            if  seq > self.product_seq[prod]:
+                print("Drop for ", str(prod)+ " of: ", self.product_seq[prod], " from Seq: " , seq , " of Size: ", seq - self.product_seq[prod])
+            elif seq < self.product_seq[prod]:
+                print ("Msg Sequence already recieved for " + str(prod) + ": " , seq , " Expected: ", self.product_seq[prod])
                 return
-            file_obj = self.product_file
+            file_obj = self.product_file[prod]
             self.decodeMessage(message)
     #        print("Current Date: ", current_date, " Prev Date: ", prev_date)
             if self.current_date != self.prev_date:
@@ -244,13 +242,13 @@ class CoinBaseLogger(threading.Thread):
                 logging.info(info_str)
                 #file_object = open(file_name, 'ab') TESTING PURPOSE
                 file_obj = open(file_name, 'wb')
-                self.product_file = file_obj
+                self.product_file[prod] = file_obj
 
     #        array = bytearray(self.coinbasemktdata)
     #        print(len(array))
             file_obj.write(bytearray(self.coinbasemktdata))
 
-            self.product_seq = seq + 1
+            self.product_seq[prod] = seq + 1
     #        debug_str = "Next expected msg Seq: " + str(product_seq[prod])
     #        logging.debug(debug_str)
         elif type_ == 'ticker':
@@ -262,6 +260,7 @@ class CoinBaseLogger(threading.Thread):
             logging.debug("Not Handled")
             pass
         elif type_ == 'heartbeat':
+#            pass
             logging.debug(debug_str)
             logging.debug("Not Handled")
             pass
@@ -332,13 +331,14 @@ for x in params_.myvars:
     logging.info(info_str)
 info_str = "Exchange EndPoint to Connect " + params_.myvars["Endpoint"]
 logging.info(info_str)
-product = list(params_.myvars["product_ids"].strip().split(","))
-product = ["VGX-USD"]
+###product = np.array(params_.myvars["product_ids_array"].strip())
+
+product = ast.literal_eval(params_.myvars["product_ids_array"].strip())
 #product_ticker_ = list(params_.myvars["ticker"].split(","))
 logging.debug("Product Data Logging...")
-for x in range(len(product)):
-    logging.debug(product[x])
-logging.debug("...End..")
+#for x in range(len(product)):
+#    logging.debug(product[x])
+#logging.debug("...End..")
 
 channels_ = list(params_.myvars["channels"].strip().split(","))
 logging.debug("Channel Data Logging...")
@@ -346,10 +346,12 @@ for x in range(len(channels_)):
     logging.debug(channels_[x])
 logging.debug("...End..")
 
-
+#product = [ ['ETH-USD'], ['BTC-USD'], ['ETH-USDT','VGX-USD'], ['BTC-USDT','LTC-USD','SHIB-USD'], ['USDT-USD','ATOM-USD','MATIC-USD','ADA-USD'], ['SOL-USD','ETH-EUR','LINK-USD','ETC-USD'] ]
+print(product)
+print(type(product))
 def main():
     for prod in product:
-        print("Spawing Logger Thread for ",prod)
+        print("Spawing Logger Thread for ", prod)
         CoinBaseLogger(prod,channels_).start()
         pass
 

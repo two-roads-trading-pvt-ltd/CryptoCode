@@ -19,7 +19,7 @@ args = parser.parse_args()
 exchange_ = args.exchange if args.exchange else 'ftx'
 fromDate_ = args.fromDate if args.fromDate else "2019-11-01"
 toDate_ = args.toDate if args.toDate else "2019-11-02"
-symbol_ = args.symbol if args.symbol else "ETH-PERPETUAL"
+symbol_ = args.symbol if args.symbol else "BTC-PERP"
 output_path = args.outputPath if args.outputPath else '/NAS1/data/CryptoData/ftx'
 
 exchange_details = get_exchange_details(exchange_)
@@ -28,7 +28,6 @@ f_hist = open("../Config/ftx_historical_market_data_api_key", "r")
 historical_key = f_hist.readline().strip()
 f_hist.close()
 print(historical_key)
-
 datasets.download(
     exchange=exchange_,
     data_types=[

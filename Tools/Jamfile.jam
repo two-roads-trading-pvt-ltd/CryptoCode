@@ -1,0 +1,37 @@
+use-project /PDVCC : ../libdvccode ;
+
+use-project /PCryptoUtils : ../CryptoUtilsCode ;
+use-project /PCryptoCDef : ../CDefCode ;
+
+lib boost_program_options : : <name>boost_program_options <search>$(BOOST_LIB_INSTALL) ;
+
+project : requirements <library>boost_program_options
+        : usage-requirements <include>$(PROJECT_INSTALL)
+        ;
+
+
+exe log_mkt_data_using_websocketpp
+    : log_mkt_data_using_websocketpp.cpp
+      /PDVCC//Utils
+      /PDVCC//Utils
+      /PDVCC//CDef
+      /PDVCC//CommonDataStructures
+      /PDVCC//CommonTradeUtils
+      /PDVCC//TradingInfo
+      /PDVCC//Profiler
+      /PCryptoUtils//libCryptoUtils
+      /PCryptoCDef//libCryptoCDefCode
+
+    :
+    : <variant>debug <variant>release
+      <linkflags>-lpthread
+      <linkflags>-lrt
+    ;
+
+install install-bin
+        : log_mkt_data_using_websocketpp
+        : <variant>release:<location>"$(PROJECT_INSTALL)/bin"
+          <variant>debug:<location>"$(PROJECT_INSTALL)/bindebug"
+        : release debug
+        ;
+
