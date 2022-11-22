@@ -24,23 +24,24 @@ ask_price_size = {}
 
 
 def decodeOrderBook(orderbook_message):
-    for values in orderbook_message['data']['bids']:
-        if values[1] == 0:
-            del bid_price_size[values[0]]
+    for bid_values in orderbook_message['data']['bids']:
+        if bid_values[1] == 0.0:
+            del bid_price_size[bid_values[0]]
         else:
-            bid_price_size[values[0]] = values[1]
-    for values in orderbook_message['data']['asks']:
-        if values[1] == 0:
-            del ask_price_size[values[0]]
+            bid_price_size[bid_values[0]] = bid_values[1]
+    for ask_values in orderbook_message['data']['asks']:
+        if ask_values[1] == 0.0:
+            del ask_price_size[ask_values[0]]
         else:
-            ask_price_size[values[0]] = values[1]
+            ask_price_size[ask_values[0]] = ask_values[1]
 
     channel_ = orderbook_message.get('channel')
     dump_string = str(channel_) + ",ftx," + str(orderbook_message['market']) + "," + str(orderbook_message['data']['time'])
-    #sorted_ask = dict(sorted(ask_price_size.keys(), key=itemgetter(), reverse=False))
-    #sorted_bid = dict(sorted(bid_price_size.keys(), key=itemgetter(), reverse=True))
+    sorted_ask = dict(sorted(ask_price_size.items(), reverse=False))
+    sorted_bid = dict(sorted(bid_price_size.items(), reverse=True))
     count = 0
-    for (askp,asks), (bidp,bids) in sorted(zip(ask_price_size.items(), bid_price_size.items())):
+#    for (askp,asks), (bidp,bids) in sorted(zip(ask_price_size.items(), bid_price_size.items())):
+    for (askp,asks), (bidp,bids) in zip(sorted_ask.items(), sorted_bid.items()):
        count += 1
        if count > 25:
            break
